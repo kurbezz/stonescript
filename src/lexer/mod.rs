@@ -140,13 +140,35 @@ impl Iterator for Lexer<'_> {
                     '%' => Some(Token::Modulo),
                     '(' => Some(Token::ParenthesisOpen),
                     ')' => Some(Token::ParenthesisClose),
+                    '[' => Some(Token::SquareBracketOpen),
+                    ']' => Some(Token::SquareBracketClose),
+                    ',' => Some(Token::Comma),
                     'a'..='z' | 'A'..='Z' => {
                         let mut identifier = c.to_string();
 
                         while let Some(&c) = self.content_iterator.peek() {
-                            if c.is_alphanumeric() || c == '_' {
+                            if c.is_alphanumeric() {
                                 identifier.push(c);
                                 self.content_iterator.next();
+                            } else if c == '\n' {
+                                match identifier.as_str() {
+                                    "ascii" => {
+                                        let mut ascii_block = "".to_string();
+
+                                        while let Some(&c) = self.content_iterator.peek() {
+                                            if ascii_block.ends_with("\nasciiend") {
+                                                ascii_block.truncate(ascii_block.len() - "\nasciiend".len());
+                                                break;
+                                            }
+
+                                            ascii_block.push(c);
+                                            self.content_iterator.next();
+                                        }
+
+                                        return Some(Token::AsciiBlock(ascii_block));
+                                    },
+                                    _ => {},
+                                }
                             } else {
                                 break;
                             }
@@ -578,6 +600,63 @@ mod tests {
             tokens,
             vec![
                 Token::ParenthesisClose,
+            ]
+        );
+    }
+
+    #[test]
+    fn test_square_bracket_open() {
+        let lexer = Lexer::new("[");
+
+        let tokens = lexer.collect::<Vec<Token>>();
+
+        assert_eq!(
+            tokens,
+            vec![
+                Token::SquareBracketOpen,
+            ]
+        );
+    }
+
+
+    #[test]
+    fn test_square_bracket_close() {
+        let lexer = Lexer::new("]");
+
+        let tokens = lexer.collect::<Vec<Token>>();
+
+        assert_eq!(
+            tokens,
+            vec![
+                Token::SquareBracketClose,
+            ]
+        );
+    }
+
+    #[test]
+    fn test_comma() {
+        let lexer = Lexer::new(",");
+
+        let tokens = lexer.collect::<Vec<Token>>();
+
+        assert_eq!(
+            tokens,
+            vec![
+                Token::Comma,
+            ]
+        );
+    }
+
+    #[test]
+    fn test_ascii_block() {
+        let lexer = Lexer::new("ascii\nhello\nasciiend");
+
+        let tokens = lexer.collect::<Vec<Token>>();
+
+        assert_eq!(
+            tokens,
+            vec![
+                Token::AsciiBlock("hello".to_string()),
             ]
         );
     }

@@ -30,5 +30,12 @@ pub enum Token {
     ParenthesisOpen,
     ParenthesisClose,
 
+    SquareBracketOpen,
+    SquareBracketClose,
+
+    Comma,
+
+    AsciiBlock(String),
+
     Identifier(String),
 }
