@@ -153,21 +153,23 @@ impl Iterator for Lexer<'_> {
                             } else if c == '\n' {
                                 match identifier.as_str() {
                                     "ascii" => {
+                                        self.content_iterator.next();
+
                                         let mut ascii_block = "".to_string();
 
                                         while let Some(&c) = self.content_iterator.peek() {
+                                            ascii_block.push(c);
+                                            self.content_iterator.next();
+
                                             if ascii_block.ends_with("\nasciiend") {
                                                 ascii_block.truncate(ascii_block.len() - "\nasciiend".len());
                                                 break;
                                             }
-
-                                            ascii_block.push(c);
-                                            self.content_iterator.next();
                                         }
 
                                         return Some(Token::AsciiBlock(ascii_block));
                                     },
-                                    _ => {},
+                                    _ => break,
                                 }
                             } else {
                                 break;
