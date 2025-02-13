@@ -26,7 +26,6 @@ pub enum Token {
     Increment,
     Decrement,
     Modulo,
-    Negation,
 
     ParenthesisOpen,
     ParenthesisClose,

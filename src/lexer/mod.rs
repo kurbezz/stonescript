@@ -42,6 +42,50 @@ impl Iterator for Lexer<'_> {
                             self.next()
                         }
                     },
+                    '/' => {
+                        match self.content_iterator.peek() {
+                            Some('/') => {
+                                self.content_iterator.next();
+
+                                let mut comment = "".to_string();
+
+                                while let Some(&c) = self.content_iterator.peek() {
+                                    if c == '\n' {
+                                        break;
+                                    }
+
+                                    comment.push(c);
+                                    self.content_iterator.next();
+                                }
+
+                                Some(Token::Comment(comment))
+                            },
+                            Some('*') => {
+                                self.content_iterator.next();
+
+                                let mut comment = "".to_string();
+
+                                while let Some(&c) = self.content_iterator.peek() {
+                                    if c == '*' {
+                                        self.content_iterator.next();
+
+                                        if let Some(&c) = self.content_iterator.peek() {
+                                            if c == '/' {
+                                                self.content_iterator.next();
+                                                break;
+                                            }
+                                        }
+                                    }
+
+                                    comment.push(c);
+                                    self.content_iterator.next();
+                                }
+
+                                Some(Token::CommentBlock(comment))
+                            },
+                            _ => Some(Token::Divide),
+                        }
+                    },
                     '?' => Some(Token::If),
                     ':' => {
                         match self.content_iterator.peek() {
@@ -52,6 +96,50 @@ impl Iterator for Lexer<'_> {
                             _ => Some(Token::Else),
                         }
                     },
+                    '=' => Some(Token::Equal),
+                    '!' => Some(Token::NotEqual),
+                    '&' => Some(Token::And),
+                    '|' => Some(Token::Or),
+                    '>' => {
+                        match self.content_iterator.peek() {
+                            Some('=') => {
+                                self.content_iterator.next();
+                                Some(Token::GreaterEqual)
+                            },
+                            _ => Some(Token::Greater),
+                        }
+                    },
+                    '<' => {
+                        match self.content_iterator.peek() {
+                            Some('=') => {
+                                self.content_iterator.next();
+                                Some(Token::LessEqual)
+                            },
+                            _ => Some(Token::Less),
+                        }
+                    },
+                    '+' => {
+                        match self.content_iterator.peek() {
+                            Some('+') => {
+                                self.content_iterator.next();
+                                Some(Token::Increment)
+                            },
+                            _ => Some(Token::Add),
+                        }
+                    },
+                    '-' => {
+                        match self.content_iterator.peek() {
+                            Some('-') => {
+                                self.content_iterator.next();
+                                Some(Token::Decrement)
+                            },
+                            _ => Some(Token::Subtract),
+                        }
+                    },
+                    '*' => Some(Token::Multiply),
+                    '%' => Some(Token::Modulo),
+                    '(' => Some(Token::ParenthesisOpen),
+                    ')' => Some(Token::ParenthesisClose),
                     'a'..='z' | 'A'..='Z' => {
                         let mut identifier = c.to_string();
 
@@ -210,6 +298,286 @@ mod tests {
                 Token::EndLine,
                 Token::NewLineIndent(2),
                 Token::Identifier("world".to_string()),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_comment() {
+        let lexer = Lexer::new("// this is a comment");
+
+        let tokens = lexer.collect::<Vec<Token>>();
+
+        assert_eq!(
+            tokens,
+            vec![
+                Token::Comment(" this is a comment".to_string()),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_comment_block() {
+        let lexer = Lexer::new("/* this is a comment block */");
+
+        let tokens = lexer.collect::<Vec<Token>>();
+
+        assert_eq!(
+            tokens,
+            vec![
+                Token::CommentBlock(" this is a comment block ".to_string()),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_comment_block_with_newlines() {
+        let lexer = Lexer::new("/* this is a comment block\nwith newlines */");
+
+        let tokens = lexer.collect::<Vec<Token>>();
+
+        assert_eq!(
+            tokens,
+            vec![
+                Token::CommentBlock(" this is a comment block\nwith newlines ".to_string()),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_equal() {
+        let lexer = Lexer::new("=");
+
+        let tokens = lexer.collect::<Vec<Token>>();
+
+        assert_eq!(
+            tokens,
+            vec![
+                Token::Equal,
+            ]
+        );
+    }
+
+    #[test]
+    fn test_not_equal() {
+        let lexer = Lexer::new("!");
+
+        let tokens = lexer.collect::<Vec<Token>>();
+
+        assert_eq!(
+            tokens,
+            vec![
+                Token::NotEqual,
+            ]
+        );
+    }
+
+    #[test]
+    fn test_and() {
+        let lexer = Lexer::new("&");
+
+        let tokens = lexer.collect::<Vec<Token>>();
+
+        assert_eq!(
+            tokens,
+            vec![
+                Token::And,
+            ]
+        );
+    }
+
+    #[test]
+    fn test_or() {
+        let lexer = Lexer::new("|");
+
+        let tokens = lexer.collect::<Vec<Token>>();
+
+        assert_eq!(
+            tokens,
+            vec![
+                Token::Or,
+            ]
+        );
+    }
+
+    #[test]
+    fn test_greater() {
+        let lexer = Lexer::new(">");
+
+        let tokens = lexer.collect::<Vec<Token>>();
+
+        assert_eq!(
+            tokens,
+            vec![
+                Token::Greater,
+            ]
+        );
+    }
+
+    #[test]
+    fn test_less() {
+        let lexer = Lexer::new("<");
+
+        let tokens = lexer.collect::<Vec<Token>>();
+
+        assert_eq!(
+            tokens,
+            vec![
+                Token::Less,
+            ]
+        );
+    }
+
+    #[test]
+    fn test_greater_equal() {
+        let lexer = Lexer::new(">=");
+
+        let tokens = lexer.collect::<Vec<Token>>();
+
+        assert_eq!(
+            tokens,
+            vec![
+                Token::GreaterEqual,
+            ]
+        );
+    }
+
+    #[test]
+    fn test_less_equal() {
+        let lexer = Lexer::new("<=");
+
+        let tokens = lexer.collect::<Vec<Token>>();
+
+        assert_eq!(
+            tokens,
+            vec![
+                Token::LessEqual,
+            ]
+        );
+    }
+
+    #[test]
+    fn test_add() {
+        let lexer = Lexer::new("+");
+
+        let tokens = lexer.collect::<Vec<Token>>();
+
+        assert_eq!(
+            tokens,
+            vec![
+                Token::Add,
+            ]
+        );
+    }
+
+    #[test]
+    fn test_subtract() {
+        let lexer = Lexer::new("-");
+
+        let tokens = lexer.collect::<Vec<Token>>();
+
+        assert_eq!(
+            tokens,
+            vec![
+                Token::Subtract,
+            ]
+        );
+    }
+
+    #[test]
+    fn test_multiply() {
+        let lexer = Lexer::new("*");
+
+        let tokens = lexer.collect::<Vec<Token>>();
+
+        assert_eq!(
+            tokens,
+            vec![
+                Token::Multiply,
+            ]
+        );
+    }
+
+    #[test]
+    fn test_divide() {
+        let lexer = Lexer::new("/");
+
+        let tokens = lexer.collect::<Vec<Token>>();
+
+        assert_eq!(
+            tokens,
+            vec![
+                Token::Divide,
+            ]
+        );
+    }
+
+    #[test]
+    fn test_increment() {
+        let lexer = Lexer::new("++");
+
+        let tokens = lexer.collect::<Vec<Token>>();
+
+        assert_eq!(
+            tokens,
+            vec![
+                Token::Increment,
+            ]
+        );
+    }
+
+    #[test]
+    fn test_decrement() {
+        let lexer = Lexer::new("--");
+
+        let tokens = lexer.collect::<Vec<Token>>();
+
+        assert_eq!(
+            tokens,
+            vec![
+                Token::Decrement,
+            ]
+        );
+    }
+
+    #[test]
+    fn test_modulo() {
+        let lexer = Lexer::new("%");
+
+        let tokens = lexer.collect::<Vec<Token>>();
+
+        assert_eq!(
+            tokens,
+            vec![
+                Token::Modulo,
+            ]
+        );
+    }
+
+    #[test]
+    fn test_parenthesis_open() {
+        let lexer = Lexer::new("(");
+
+        let tokens = lexer.collect::<Vec<Token>>();
+
+        assert_eq!(
+            tokens,
+            vec![
+                Token::ParenthesisOpen,
+            ]
+        );
+    }
+
+    #[test]
+    fn test_parenthesis_close() {
+        let lexer = Lexer::new(")");
+
+        let tokens = lexer.collect::<Vec<Token>>();
+
+        assert_eq!(
+            tokens,
+            vec![
+                Token::ParenthesisClose,
             ]
         );
     }

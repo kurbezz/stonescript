@@ -6,6 +6,7 @@ pub struct Parser {
     current: usize,
 }
 
+
 #[derive(Debug)]
 pub struct SyntaxTree {}
 
