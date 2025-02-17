@@ -16,7 +16,6 @@ fn main() {
     let tokens = lexer.collect::<Vec<lexer::tokens::Token>>();
     println!("Tokens: {:?}", tokens);
 
-    let mut parser = parser::Parser::new(tokens);
-    let syntax_tree = parser.parse();
+    let syntax_tree = parser::parse(&tokens);
     println!("Syntax Tree: {:?}", syntax_tree);
 }
