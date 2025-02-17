@@ -1,0 +1,8 @@
+use crate::parser::{structs::Expression, types::TokenIterator};
+
+
+pub fn parse_function_expression<'a>(
+    mut iterator: TokenIterator<'a>,
+) -> (TokenIterator<'a>, Option<Expression>) {
+    todo!()
+}
