@@ -38,4 +38,6 @@ pub enum Token {
     AsciiBlock(String),
 
     Identifier(String),
+
+    String(String),
 }

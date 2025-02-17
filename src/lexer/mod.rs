@@ -143,6 +143,21 @@ impl Iterator for Lexer<'_> {
                     '[' => Some(Token::SquareBracketOpen),
                     ']' => Some(Token::SquareBracketClose),
                     ',' => Some(Token::Comma),
+                    '"' => {
+                        let mut string = "".to_string();
+
+                        while let Some(&c) = self.content_iterator.peek() {
+                            if c == '"' {
+                                self.content_iterator.next();
+                                break;
+                            }
+
+                            string.push(c);
+                            self.content_iterator.next();
+                        }
+
+                        Some(Token::String(string))
+                    },
                     'a'..='z' | 'A'..='Z' => {
                         let mut identifier = c.to_string();
 
@@ -659,6 +674,20 @@ mod tests {
             tokens,
             vec![
                 Token::AsciiBlock("hello".to_string()),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_string() {
+        let lexer = Lexer::new("\"hello\"");
+
+        let tokens = lexer.collect::<Vec<Token>>();
+
+        assert_eq!(
+            tokens,
+            vec![
+                Token::String("hello".to_string()),
             ]
         );
     }
