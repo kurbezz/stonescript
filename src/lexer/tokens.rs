@@ -1,5 +1,5 @@
 #[derive(Debug, PartialEq, Clone)]
-pub enum Token {
+pub enum TokenType {
     NewLineIndent(u32),
     EndLine,
 
@@ -40,4 +40,17 @@ pub enum Token {
     Identifier(String),
 
     String(String),
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct Token {
+    pub token_type: TokenType,
+    pub line: usize,
+    pub column: usize,
+}
+
+impl PartialEq<TokenType> for Token {
+    fn eq(&self, other: &TokenType) -> bool {
+        self.token_type == *other
+    }
 }

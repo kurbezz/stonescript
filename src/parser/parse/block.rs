@@ -4,7 +4,7 @@ use super::expression::parse_expression;
 
 
 pub fn parse_expression_block(tokens: &[Token]) -> Expression {
-    let mut iterator: TokenIterator<'_> = tokens.iter().peekable();
+    let mut iterator = TokenIterator::new(tokens.iter().peekable());
 
     let mut expressions = vec![];
 

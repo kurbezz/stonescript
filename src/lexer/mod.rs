@@ -1,21 +1,73 @@
 pub mod tokens;
 
-use tokens::Token;
+use tokens::{Token, TokenType};
+
+
+pub struct ContentIterator<'a>  {
+    iterator: std::iter::Peekable<std::str::Chars<'a>>,
+    line: usize,
+    column: usize,
+}
+
+impl ContentIterator<'_> {
+    pub fn new(content: &str) -> ContentIterator {
+        ContentIterator {
+            iterator: content.chars().peekable(),
+            line: 1,
+            column: 0,
+        }
+    }
+
+    pub fn next(&mut self) -> Option<char> {
+        match self.iterator.next() {
+            Some(c) => {
+                if c == '\n' {
+                    self.line += 1;
+                    self.column = 0;
+                } else {
+                    self.column += 1;
+                }
+
+                Some(c)
+            },
+            None => None,
+        }
+    }
+
+    pub fn peek(&mut self) -> Option<&char> {
+        self.iterator.peek()
+    }
+}
 
 
 pub struct Lexer<'a> {
-    content_iterator: std::iter::Peekable<std::str::Chars<'a>>,
+    content_iterator: ContentIterator<'a>,
     previous_token: Option<Token>,
+    line: usize,
+    column: usize,
 }
 
 impl<'a> Lexer<'a> {
     pub fn new(content: &'a str) -> Lexer<'a> {
         Lexer {
-            content_iterator: content.chars().peekable(),
+            content_iterator: ContentIterator::new(content),
             previous_token: None,
+            line: 1,
+            column: 0,
         }
     }
 }
+
+impl Lexer<'_> {
+    pub fn create_token(&self, token_type: TokenType) -> Token {
+        Token {
+            token_type,
+            line: self.line,
+            column: self.column,
+        }
+    }
+}
+
 
 impl Iterator for Lexer<'_> {
     type Item = Token;
@@ -25,7 +77,7 @@ impl Iterator for Lexer<'_> {
             Some(c) => {
                 match c {
                     ' ' => {
-                        if self.previous_token == Some(Token::EndLine) || self.previous_token == None {
+                        if self.previous_token.clone().is_some_and(|t| t.token_type == TokenType::EndLine) || self.previous_token == None {
                             let mut indent = 1;
 
                             while let Some(&c) = self.content_iterator.peek() {
@@ -37,7 +89,7 @@ impl Iterator for Lexer<'_> {
                                 }
                             }
 
-                            Some(Token::NewLineIndent(indent))
+                            Some(self.create_token(TokenType::NewLineIndent(indent)))
                         } else {
                             self.next()
                         }
@@ -58,7 +110,7 @@ impl Iterator for Lexer<'_> {
                                     self.content_iterator.next();
                                 }
 
-                                Some(Token::Comment(comment))
+                                Some(self.create_token(TokenType::Comment(comment)))
                             },
                             Some('*') => {
                                 self.content_iterator.next();
@@ -81,68 +133,68 @@ impl Iterator for Lexer<'_> {
                                     self.content_iterator.next();
                                 }
 
-                                Some(Token::CommentBlock(comment))
+                                Some(self.create_token(TokenType::CommentBlock(comment)))
                             },
-                            _ => Some(Token::Divide),
+                            _ => Some(self.create_token(TokenType::Divide)),
                         }
                     },
-                    '?' => Some(Token::If),
+                    '?' => Some(self.create_token(TokenType::If)),
                     ':' => {
                         match self.content_iterator.peek() {
                             Some('?') => {
                                 self.content_iterator.next();
-                                Some(Token::ElseIf)
+                                Some(self.create_token(TokenType::ElseIf))
                             },
-                            _ => Some(Token::Else),
+                            _ => Some(self.create_token(TokenType::Else)),
                         }
                     },
-                    '=' => Some(Token::Equal),
-                    '!' => Some(Token::NotEqual),
-                    '&' => Some(Token::And),
-                    '|' => Some(Token::Or),
+                    '=' => Some(self.create_token(TokenType::Equal)),
+                    '!' => Some(self.create_token(TokenType::NotEqual)),
+                    '&' => Some(self.create_token(TokenType::And)),
+                    '|' => Some(self.create_token(TokenType::Or)),
                     '>' => {
                         match self.content_iterator.peek() {
                             Some('=') => {
                                 self.content_iterator.next();
-                                Some(Token::GreaterEqual)
+                                Some(self.create_token(TokenType::GreaterEqual))
                             },
-                            _ => Some(Token::Greater),
+                            _ => Some(self.create_token(TokenType::Greater)),
                         }
                     },
                     '<' => {
                         match self.content_iterator.peek() {
                             Some('=') => {
                                 self.content_iterator.next();
-                                Some(Token::LessEqual)
+                                Some(self.create_token(TokenType::LessEqual))
                             },
-                            _ => Some(Token::Less),
+                            _ => Some(self.create_token(TokenType::Less)),
                         }
                     },
                     '+' => {
                         match self.content_iterator.peek() {
                             Some('+') => {
                                 self.content_iterator.next();
-                                Some(Token::Increment)
+                                Some(self.create_token(TokenType::Increment))
                             },
-                            _ => Some(Token::Add),
+                            _ => Some(self.create_token(TokenType::Add)),
                         }
                     },
                     '-' => {
                         match self.content_iterator.peek() {
                             Some('-') => {
                                 self.content_iterator.next();
-                                Some(Token::Decrement)
+                                Some(self.create_token(TokenType::Decrement))
                             },
-                            _ => Some(Token::Subtract),
+                            _ => Some(self.create_token(TokenType::Subtract)),
                         }
-                    },
-                    '*' => Some(Token::Multiply),
-                    '%' => Some(Token::Modulo),
-                    '(' => Some(Token::ParenthesisOpen),
-                    ')' => Some(Token::ParenthesisClose),
-                    '[' => Some(Token::SquareBracketOpen),
-                    ']' => Some(Token::SquareBracketClose),
-                    ',' => Some(Token::Comma),
+                    }
+                    '*' => Some(self.create_token(TokenType::Multiply)),
+                    '%' => Some(self.create_token(TokenType::Modulo)),
+                    '(' => Some(self.create_token(TokenType::ParenthesisOpen)),
+                    ')' => Some(self.create_token(TokenType::ParenthesisClose)),
+                    '[' => Some(self.create_token(TokenType::SquareBracketOpen)),
+                    ']' => Some(self.create_token(TokenType::SquareBracketClose)),
+                    ',' => Some(self.create_token(TokenType::Comma)),
                     '"' => {
                         let mut string = "".to_string();
 
@@ -156,7 +208,7 @@ impl Iterator for Lexer<'_> {
                             self.content_iterator.next();
                         }
 
-                        Some(Token::String(string))
+                        Some(self.create_token(TokenType::String(string)))
                     },
                     'a'..='z' | 'A'..='Z' => {
                         let mut identifier = c.to_string();
@@ -182,7 +234,7 @@ impl Iterator for Lexer<'_> {
                                             }
                                         }
 
-                                        return Some(Token::AsciiBlock(ascii_block));
+                                        return Some(self.create_token(TokenType::AsciiBlock(ascii_block)));
                                     },
                                     _ => break,
                                 }
@@ -191,9 +243,11 @@ impl Iterator for Lexer<'_> {
                             }
                         }
 
-                        Some(Token::Identifier(identifier))
+                        Some(self.create_token(TokenType::Identifier(identifier)))
                     },
-                    '\n' => Some(Token::EndLine),
+                    '\n' => {
+                        Some(self.create_token(TokenType::EndLine))
+                    },
                     _ => panic!("Unexpected character: {}", c),
                 }
             },
@@ -224,8 +278,12 @@ mod tests {
 
         let tokens = lexer.collect::<Vec<Token>>();
 
-        assert_eq!(tokens.len(), 1);
-        assert_eq!(tokens[0], Token::Identifier("hello".to_string()));
+        assert_eq!(
+            tokens,
+            vec![
+                TokenType::Identifier("hello".to_string()),
+            ]
+        )
     }
 
     #[test]
@@ -234,9 +292,13 @@ mod tests {
 
         let tokens = lexer.collect::<Vec<Token>>();
 
-        assert_eq!(tokens.len(), 2);
-        assert_eq!(tokens[0], Token::Identifier("hello".to_string()));
-        assert_eq!(tokens[1], Token::Identifier("world".to_string()));
+        assert_eq!(
+            tokens,
+            vec![
+                TokenType::Identifier("hello".to_string()),
+                TokenType::Identifier("world".to_string()),
+            ]
+        )
     }
 
     #[test]
@@ -248,9 +310,9 @@ mod tests {
         assert_eq!(
             tokens,
             vec![
-                Token::Identifier("hello".to_string()),
-                Token::EndLine,
-                Token::Identifier("world".to_string()),
+                TokenType::Identifier("hello".to_string()),
+                TokenType::EndLine,
+                TokenType::Identifier("world".to_string()),
             ]
         );
     }
@@ -264,10 +326,10 @@ mod tests {
         assert_eq!(
             tokens,
             vec![
-                Token::Identifier("hello".to_string()),
-                Token::EndLine,
-                Token::NewLineIndent(2),
-                Token::Identifier("world".to_string()),
+                TokenType::Identifier("hello".to_string()),
+                TokenType::EndLine,
+                TokenType::NewLineIndent(2),
+                TokenType::Identifier("world".to_string()),
             ]
         );
     }
@@ -281,8 +343,8 @@ mod tests {
         assert_eq!(
             tokens,
             vec![
-                Token::If,
-                Token::Identifier("test".to_string()),
+                TokenType::If,
+                TokenType::Identifier("test".to_string()),
             ]
         );
     }
@@ -296,16 +358,16 @@ mod tests {
         assert_eq!(
             tokens,
             vec![
-                Token::If,
-                Token::Identifier("test".to_string()),
-                Token::EndLine,
-                Token::NewLineIndent(2),
-                Token::Identifier("hello".to_string()),
-                Token::EndLine,
-                Token::Else,
-                Token::EndLine,
-                Token::NewLineIndent(2),
-                Token::Identifier("world".to_string()),
+                TokenType::If,
+                TokenType::Identifier("test".to_string()),
+                TokenType::EndLine,
+                TokenType::NewLineIndent(2),
+                TokenType::Identifier("hello".to_string()),
+                TokenType::EndLine,
+                TokenType::Else,
+                TokenType::EndLine,
+                TokenType::NewLineIndent(2),
+                TokenType::Identifier("world".to_string()),
             ]
         );
     }
@@ -319,24 +381,24 @@ mod tests {
         assert_eq!(
             tokens,
             vec![
-                Token::If,
-                Token::Identifier("test1".to_string()),
-                Token::EndLine,
-                Token::NewLineIndent(2),
-                Token::Identifier("hello".to_string()),
-                Token::EndLine,
-                Token::ElseIf,
-                Token::EndLine,
-                Token::NewLineIndent(2),
-                Token::Identifier("world".to_string()),
-                Token::EndLine,
-                Token::NewLineIndent(2),
-                Token::Identifier("test2".to_string()),
-                Token::EndLine,
-                Token::Else,
-                Token::EndLine,
-                Token::NewLineIndent(2),
-                Token::Identifier("world".to_string()),
+                TokenType::If,
+                TokenType::Identifier("test1".to_string()),
+                TokenType::EndLine,
+                TokenType::NewLineIndent(2),
+                TokenType::Identifier("hello".to_string()),
+                TokenType::EndLine,
+                TokenType::ElseIf,
+                TokenType::EndLine,
+                TokenType::NewLineIndent(2),
+                TokenType::Identifier("world".to_string()),
+                TokenType::EndLine,
+                TokenType::NewLineIndent(2),
+                TokenType::Identifier("test2".to_string()),
+                TokenType::EndLine,
+                TokenType::Else,
+                TokenType::EndLine,
+                TokenType::NewLineIndent(2),
+                TokenType::Identifier("world".to_string()),
             ]
         );
     }
@@ -350,7 +412,7 @@ mod tests {
         assert_eq!(
             tokens,
             vec![
-                Token::Comment(" this is a comment".to_string()),
+                TokenType::Comment(" this is a comment".to_string()),
             ]
         );
     }
@@ -364,7 +426,7 @@ mod tests {
         assert_eq!(
             tokens,
             vec![
-                Token::CommentBlock(" this is a comment block ".to_string()),
+                TokenType::CommentBlock(" this is a comment block ".to_string()),
             ]
         );
     }
@@ -378,7 +440,7 @@ mod tests {
         assert_eq!(
             tokens,
             vec![
-                Token::CommentBlock(" this is a comment block\nwith newlines ".to_string()),
+                TokenType::CommentBlock(" this is a comment block\nwith newlines ".to_string()),
             ]
         );
     }
@@ -392,7 +454,7 @@ mod tests {
         assert_eq!(
             tokens,
             vec![
-                Token::Equal,
+                TokenType::Equal,
             ]
         );
     }
@@ -406,7 +468,7 @@ mod tests {
         assert_eq!(
             tokens,
             vec![
-                Token::NotEqual,
+                TokenType::NotEqual,
             ]
         );
     }
@@ -420,7 +482,7 @@ mod tests {
         assert_eq!(
             tokens,
             vec![
-                Token::And,
+                TokenType::And,
             ]
         );
     }
@@ -434,7 +496,7 @@ mod tests {
         assert_eq!(
             tokens,
             vec![
-                Token::Or,
+                TokenType::Or,
             ]
         );
     }
@@ -448,7 +510,7 @@ mod tests {
         assert_eq!(
             tokens,
             vec![
-                Token::Greater,
+                TokenType::Greater,
             ]
         );
     }
@@ -462,7 +524,7 @@ mod tests {
         assert_eq!(
             tokens,
             vec![
-                Token::Less,
+                TokenType::Less,
             ]
         );
     }
@@ -476,7 +538,7 @@ mod tests {
         assert_eq!(
             tokens,
             vec![
-                Token::GreaterEqual,
+                TokenType::GreaterEqual,
             ]
         );
     }
@@ -490,7 +552,7 @@ mod tests {
         assert_eq!(
             tokens,
             vec![
-                Token::LessEqual,
+                TokenType::LessEqual,
             ]
         );
     }
@@ -504,7 +566,7 @@ mod tests {
         assert_eq!(
             tokens,
             vec![
-                Token::Add,
+                TokenType::Add,
             ]
         );
     }
@@ -518,7 +580,7 @@ mod tests {
         assert_eq!(
             tokens,
             vec![
-                Token::Subtract,
+                TokenType::Subtract,
             ]
         );
     }
@@ -532,7 +594,7 @@ mod tests {
         assert_eq!(
             tokens,
             vec![
-                Token::Multiply,
+                TokenType::Multiply,
             ]
         );
     }
@@ -546,7 +608,7 @@ mod tests {
         assert_eq!(
             tokens,
             vec![
-                Token::Divide,
+                TokenType::Divide,
             ]
         );
     }
@@ -560,7 +622,7 @@ mod tests {
         assert_eq!(
             tokens,
             vec![
-                Token::Increment,
+                TokenType::Increment,
             ]
         );
     }
@@ -574,7 +636,7 @@ mod tests {
         assert_eq!(
             tokens,
             vec![
-                Token::Decrement,
+                TokenType::Decrement,
             ]
         );
     }
@@ -588,7 +650,7 @@ mod tests {
         assert_eq!(
             tokens,
             vec![
-                Token::Modulo,
+                TokenType::Modulo,
             ]
         );
     }
@@ -602,7 +664,7 @@ mod tests {
         assert_eq!(
             tokens,
             vec![
-                Token::ParenthesisOpen,
+                TokenType::ParenthesisOpen,
             ]
         );
     }
@@ -616,7 +678,7 @@ mod tests {
         assert_eq!(
             tokens,
             vec![
-                Token::ParenthesisClose,
+                TokenType::ParenthesisClose,
             ]
         );
     }
@@ -630,7 +692,7 @@ mod tests {
         assert_eq!(
             tokens,
             vec![
-                Token::SquareBracketOpen,
+                TokenType::SquareBracketOpen,
             ]
         );
     }
@@ -645,7 +707,7 @@ mod tests {
         assert_eq!(
             tokens,
             vec![
-                Token::SquareBracketClose,
+                TokenType::SquareBracketClose,
             ]
         );
     }
@@ -659,7 +721,7 @@ mod tests {
         assert_eq!(
             tokens,
             vec![
-                Token::Comma,
+                TokenType::Comma,
             ]
         );
     }
@@ -673,7 +735,7 @@ mod tests {
         assert_eq!(
             tokens,
             vec![
-                Token::AsciiBlock("hello".to_string()),
+                TokenType::AsciiBlock("hello".to_string()),
             ]
         );
     }
@@ -687,7 +749,7 @@ mod tests {
         assert_eq!(
             tokens,
             vec![
-                Token::String("hello".to_string()),
+                TokenType::String("hello".to_string()),
             ]
         );
     }

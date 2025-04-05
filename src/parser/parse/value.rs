@@ -1,9 +1,9 @@
-use crate::{lexer::tokens::Token, parser::structs::{Expression, Value}};
+use crate::{lexer::tokens::{Token, TokenType}, parser::structs::{Expression, Value}};
 
 
 pub fn parse_expression_value(token: &Token) -> Expression {
-    match token {
-        Token::Identifier(name) => {
+    match &token.token_type {
+        TokenType::Identifier(name) => {
             if let Ok(value) = name.parse::<i64>() {
                 Expression::Value(Value::Integer(value))
             } else if let Ok(value) = name.parse::<f64>() {
@@ -12,7 +12,7 @@ pub fn parse_expression_value(token: &Token) -> Expression {
                 Expression::Identifier(name.clone())
             }
         },
-        Token::String(value) => Expression::Value(Value::String(value.clone())),
+        TokenType::String(value) => Expression::Value(Value::String(value.clone())),
         _ => panic!("Expected identifier"),
     }
 }
